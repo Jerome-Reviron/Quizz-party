@@ -58,18 +58,22 @@ const AdminDashboard: React.FC = () => {
             return;
         }
 
-        const finalQuestions: Question[] = [];
-        for (const q of editableQuestions) {
-            if (!q.question.trim() || q.options.some(opt => !opt.trim()) || q.answerIndex === null) {
-                setError("Chaque question doit avoir un texte, des réponses et une bonne réponse sélectionnée.");
-                return;
-            }
-            finalQuestions.push({
-                question: q.question,
-                options: q.options,
-                answerIndex: q.answerIndex,
-            });
+        const isAnyQuestionInvalid = editableQuestions.some(q => 
+            !q.question.trim() || q.options.some(opt => !opt.trim()) || q.answerIndex === null
+        );
+
+        if (isAnyQuestionInvalid) {
+            setError("Chaque question doit avoir un texte, des réponses et une bonne réponse sélectionnée.");
+            return;
         }
+
+        // À ce stade, nous savons que toutes les questions sont valides.
+        const finalQuestions: Question[] = editableQuestions.map(q => ({
+            question: q.question,
+            options: q.options,
+            // Le "as number" est maintenant sûr car nous avons vérifié les nulls ci-dessus.
+            answerIndex: q.answerIndex as number,
+        }));
         
         const newQuiz: Quiz = {
             id: Date.now().toString(),
