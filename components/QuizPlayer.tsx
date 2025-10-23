@@ -3,7 +3,7 @@ import { type Quiz } from '../types';
 import Card from './ui/Card';
 import Input from './ui/Input';
 import Button from './ui/Button';
-import { savePlayerResult, isPodiumConfigured } from '../services/podiumService';
+import { savePlayerResult, isStorageConfigured } from '../services/storageService';
 
 const TIME_LIMIT = 15;
 
@@ -51,11 +51,18 @@ const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
 
         const isLastQuestion = currentQuestionIndex >= quiz.questions.length - 1;
 
-        if (isLastQuestion && isPodiumConfigured) {
-            setIsSaving(true);
-            const finalScore = score + (isCorrect ? 1 : 0);
-            await savePlayerResult({ id: Date.now().toString(), name: playerName, score: finalScore });
-            setIsSaving(false);
+        if (isLastQuestion && isStorageConfigured) {
+            try {
+                setIsSaving(true);
+                const finalScore = score + (isCorrect ? 1 : 0);
+                // On passe maintenant l'ID du quiz pour sauvegarder le score au bon endroit.
+                await savePlayerResult(quiz.id, { id: Date.now().toString(), name: playerName, score: finalScore });
+            } catch (error) {
+                console.error("Failed to save player result:", error);
+                // On peut choisir d'afficher une erreur à l'utilisateur, mais pour l'instant, le log est suffisant.
+            } finally {
+                setIsSaving(false);
+            }
         }
 
         setTimeout(() => {
@@ -81,8 +88,6 @@ const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
         return 'bg-gray-700 opacity-50';
     };
     
-    // Le bloc d'erreur a été supprimé car la vérification est maintenant faite dans App.tsx.
-
     if (step === 'name') {
         return (
             <Card>

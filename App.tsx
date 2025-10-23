@@ -6,7 +6,7 @@ import Login from './components/Login';
 import ConfigError from './components/ConfigError';
 import { type Quiz } from './types';
 import { decodeData } from './utils/urlData';
-import { isPodiumConfigured } from './services/podiumService';
+import { isStorageConfigured } from './services/storageService';
 
 const App: React.FC = () => {
     const [route, setRoute] = useState<string>('home');
@@ -33,7 +33,7 @@ const App: React.FC = () => {
                     setRoute('home');
                 }
             } else if (hash.startsWith('#/podium/')) {
-                 try {
+                try {
                     const encodedData = hash.substring(9);
                     const decodedData = decodeData<Quiz>(encodedData);
                     setQuizData(decodedData);
@@ -60,9 +60,8 @@ const App: React.FC = () => {
     };
 
     const renderContent = () => {
-        // NOUVEAU: Le garde-fou de configuration.
-        // Si les clés API ne sont pas chargées, on affiche un écran d'aide.
-        if (!isPodiumConfigured) {
+        // Le garde-fou de configuration utilise maintenant le nouveau service.
+        if (!isStorageConfigured) {
             return <ConfigError />;
         }
         

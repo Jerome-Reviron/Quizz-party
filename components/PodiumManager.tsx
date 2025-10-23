@@ -3,7 +3,7 @@ import { type PlayerResult, type Quiz } from '../types';
 import Card from './ui/Card';
 import Button from './ui/Button';
 import { TrophyIcon } from './icons/Icons';
-import { getPlayerResults, isPodiumConfigured } from '../services/podiumService';
+import { getPlayerResults, isStorageConfigured } from '../services/storageService';
 
 
 const PodiumManager: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
@@ -11,33 +11,28 @@ const PodiumManager: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
     const [isLoading, setIsLoading] = useState(true);
     
     useEffect(() => {
-        if (!isPodiumConfigured) {
+        if (!isStorageConfigured) {
             setIsLoading(false);
             return;
         }
 
         const loadResults = async () => {
-            const fetchedResults = await getPlayerResults();
+            // On passe maintenant l'ID du quiz pour ne récupérer que les scores pertinents.
+            const fetchedResults = await getPlayerResults(quiz.id);
             setResults(fetchedResults);
             setIsLoading(false);
         };
         
         loadResults();
 
-        // On rafraîchit les scores toutes les 15 secondes pour le "suspense"
         const intervalId = setInterval(loadResults, 15000);
 
-        // Nettoyage de l'intervalle quand le composant est démonté
         return () => {
             clearInterval(intervalId);
         };
     }, [quiz.id]);
-    
-    // Le bloc d'erreur a été supprimé car la vérification est maintenant faite dans App.tsx.
 
-    // On filtre l'entrée d'initialisation pour ne pas l'afficher
-    const visibleResults = results.filter(result => result.id !== 'init');
-    const sortedResults = [...visibleResults].sort((a, b) => b.score - a.score);
+    const sortedResults = [...results].sort((a, b) => b.score - a.score);
 
     const podiumColors = ['text-yellow-400', 'text-gray-300', 'text-yellow-600'];
 

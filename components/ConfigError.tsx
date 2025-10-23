@@ -1,6 +1,6 @@
 import React from 'react';
 import Card from './ui/Card';
-import { API_KEY, BIN_ID } from '../services/podiumService';
+import { API_KEY, BIN_ID } from '../services/storageService';
 
 const ConfigError: React.FC = () => {
     return (
@@ -10,31 +10,27 @@ const ConfigError: React.FC = () => {
                 <p className="text-white mb-6">Le podium et la sauvegarde des scores sont désactivés.</p>
 
                 <div className="text-left bg-gray-900 p-4 rounded-lg text-white space-y-4 text-sm">
-                    <p>L'application n'a pas réussi à charger toutes les clés nécessaires. Voici ce qui a été détecté :</p>
-                    
-                    <div className="space-y-2">
-                        <div className={`p-2 rounded ${API_KEY ? 'bg-green-900/50' : 'bg-red-900/50'}`}>
-                            <strong>VITE_JSONBIN_API_KEY:</strong> 
-                            <span className="font-mono ml-2">{API_KEY ? "✔️ Chargée" : "❌ Manquante"}</span>
-                        </div>
-                        <div className={`p-2 rounded ${BIN_ID ? 'bg-green-900/50' : 'bg-red-900/50'}`}>
-                            <strong>VITE_JSONBIN_BIN_ID:</strong>
-                            <span className="font-mono ml-2">{BIN_ID ? "✔️ Chargé" : "❌ Manquant"}</span>
-                        </div>
-                    </div>
+                    <p>Il semble que les clés de connexion au service de sauvegarde n'aient pas été correctement configurées.</p>
 
-                    <p className="font-bold pt-2">Comment résoudre ce problème ?</p>
-                    <p className="text-gray-300">Veuillez vérifier les points suivants TRÈS attentivement :</p>
-                    <ul className="list-disc list-inside text-gray-400 pl-2 space-y-1">
-                        <li>À la racine de votre projet, un fichier nommé très exactement <code className="bg-gray-700 p-1 rounded">.env.local</code> doit exister.</li>
-                        <li>Le nom de la variable est <code className="bg-gray-700 p-1 rounded">VITE_JSONBIN_API_KEY</code>, sans aucune faute de frappe.</li>
-                        <li>Il ne doit y avoir aucun espace avant ou après le signe <code className="bg-gray-700 p-1 rounded">=</code>.</li>
+                    <p className="font-bold pt-2">Action requise :</p>
+                    <p className="text-gray-300">Veuillez suivre ces étapes pour résoudre le problème :</p>
+                    <ul className="list-disc list-inside text-gray-400 pl-2 space-y-2">
                         <li>
-                            <strong>Action cruciale :</strong> Supprimez le fichier <code className="bg-gray-700 p-1 rounded">.env.local</code> et recréez-le en tapant manuellement (sans copier-coller) pour éviter les caractères invisibles.
+                            Ouvrez le fichier : <br />
+                            <code className="bg-gray-700 p-1 rounded text-yellow-300">services/storageService.ts</code>
                         </li>
                         <li>
-                            Après toute modification, vous devez <strong>arrêter et redémarrer complètement</strong> le serveur de développement.
+                            Au début de ce fichier, trouvez ces lignes :
+                            <pre className="bg-black p-2 rounded-md mt-1 text-xs whitespace-pre-wrap">
+                                <code>
+{`const rawApiKey = "VOTRE_CLÉ_API_JSONBIN_ICI";
+const rawBinId = "VOTRE_BIN_ID_JSONBIN_ICI";`}
+                                </code>
+                            </pre>
                         </li>
+                        <li>Remplacez <code className="bg-gray-700 p-1 rounded">"VOTRE_CLÉ_API_JSONBIN_ICI"</code> par votre clé "X-Master-Key" de JSONBin.</li>
+                        <li>Remplacez <code className="bg-gray-700 p-1 rounded">"VOTRE_BIN_ID_JSONBIN_ICI"</code> par l'identifiant de votre bin (l'ID se trouve dans l'URL de votre bin).</li>
+                        <li>Sauvegardez le fichier. L'application devrait se recharger automatiquement et fonctionner.</li>
                     </ul>
                 </div>
             </div>

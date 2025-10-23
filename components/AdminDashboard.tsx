@@ -5,15 +5,8 @@ import Card from './ui/Card';
 import Input from './ui/Input';
 import Button from './ui/Button';
 import { TrashIcon } from './icons/Icons';
-import { API_KEY, BIN_ID, isPodiumConfigured } from '../services/podiumService';
-
-const QRCodeDisplay: React.FC<{ url: string }> = ({ url }) => (
-    <img
-        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`}
-        alt="QR Code"
-        className="mx-auto border-4 border-white rounded-lg shadow-lg"
-    />
-);
+import { getQuizzes, saveQuizzes } from '../services/storageService';
+import ShareModal from './ShareModal';
 
 type EditableQuestion = {
     id: number;
@@ -24,25 +17,25 @@ type EditableQuestion = {
 
 const AdminDashboard: React.FC = () => {
     const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
     const [creationMode, setCreationMode] = useState<'manual' | null>(null);
     const [sharingQuiz, setSharingQuiz] = useState<Quiz | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [copySuccess, setCopySuccess] = useState(false);
 
     const [newQuizTitle, setNewQuizTitle] = useState('');
     const [editableQuestions, setEditableQuestions] = useState<EditableQuestion[]>([]);
     
     useEffect(() => {
-        const savedQuizzes = localStorage.getItem('quizzes');
-        if (savedQuizzes) {
-            setQuizzes(JSON.parse(savedQuizzes));
-        }
+        const loadQuizzes = async () => {
+            setIsLoading(true);
+            const fetchedQuizzes = await getQuizzes();
+            setQuizzes(fetchedQuizzes);
+            setIsLoading(false);
+        };
+        loadQuizzes();
     }, []);
 
-    useEffect(() => {
-        localStorage.setItem('quizzes', JSON.stringify(quizzes));
-    }, [quizzes]);
-    
     const resetCreationForm = () => {
         setNewQuizTitle('');
         setEditableQuestions([]);
@@ -54,7 +47,7 @@ const AdminDashboard: React.FC = () => {
         resetCreationForm();
     };
     
-    const handleSaveManualQuiz = () => {
+    const handleSaveManualQuiz = async () => {
         setError(null);
         if (!newQuizTitle.trim()) {
             setError("Le quiz doit avoir un titre.");
@@ -83,22 +76,32 @@ const AdminDashboard: React.FC = () => {
             title: newQuizTitle,
             questions: finalQuestions,
         };
-
-        setQuizzes(prev => [newQuiz, ...prev]);
-        setCreationMode(null);
-        resetCreationForm();
+        
+        try {
+            setIsSaving(true);
+            const updatedQuizzes = [newQuiz, ...quizzes];
+            await saveQuizzes(updatedQuizzes);
+            setQuizzes(updatedQuizzes);
+            setCreationMode(null);
+            resetCreationForm();
+        } catch (error) {
+            console.error("Failed to save quiz:", error);
+            setError("Une erreur est survenue lors de la sauvegarde. Vérifiez votre configuration et la console pour plus de détails.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const handleDeleteQuiz = (id: string) => {
+    const handleDeleteQuiz = async (id: string) => {
         if (window.confirm("Êtes-vous sûr de vouloir supprimer ce quiz ?")) {
-            setQuizzes(prev => prev.filter(q => q.id !== id));
+            const updatedQuizzes = quizzes.filter(q => q.id !== id);
+            await saveQuizzes(updatedQuizzes);
+            setQuizzes(updatedQuizzes);
         }
     };
     
-    // --- Handlers for the manual form ---
     const addQuestion = () => {
         if (editableQuestions.length === 0) {
-             // Démarrer avec une question par défaut
             setEditableQuestions([{ id: Date.now(), question: '', options: ['', ''], answerIndex: null }]);
         } else {
             setEditableQuestions(prev => [...prev, { id: Date.now(), question: '', options: ['', ''], answerIndex: null }]);
@@ -110,43 +113,6 @@ const AdminDashboard: React.FC = () => {
     const removeOption = (questionId: number, optionIndex: number) => setEditableQuestions(prev => prev.map(q => q.id === questionId ? { ...q, options: q.options.filter((_, i) => i !== optionIndex) } : q));
     const updateOptionText = (questionId: number, optionIndex: number, text: string) => setEditableQuestions(prev => prev.map(q => q.id === questionId ? { ...q, options: q.options.map((opt, i) => i === optionIndex ? text : opt) } : q));
     const setCorrectAnswer = (questionId: number, optionIndex: number) => setEditableQuestions(prev => prev.map(q => q.id === questionId ? { ...q, answerIndex: optionIndex } : q));
-
-    // --- Render functions ---
-    const renderShareModal = () => {
-        if (!sharingQuiz) return null;
-        const shareUrl = new URL(window.location.href);
-        const encodedQuizData = encodeData(sharingQuiz);
-        shareUrl.hash = `#/quiz/${encodedQuizData}`;
-        const playerUrl = shareUrl.toString();
-
-        const handleCopy = () => {
-            navigator.clipboard.writeText(playerUrl).then(() => {
-                setCopySuccess(true);
-                setTimeout(() => setCopySuccess(false), 2000);
-            }).catch(err => {
-                console.error('Erreur lors de la tentative de copie', err);
-            });
-        };
-        
-        return (
-            <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-                <Card className="w-full max-w-md">
-                    <div className="text-center space-y-4">
-                        <h2 className="text-2xl font-bold text-yellow-300">Partager le Quiz</h2>
-                        <p className="text-lg text-white">{sharingQuiz.title}</p>
-                        {playerUrl.length > 2000 && (
-                            <div className="bg-red-900/50 border border-red-700 text-red-300 text-sm p-3 rounded-lg">
-                                <p><strong>Attention :</strong> Ce quiz est très volumineux et le lien pourrait ne pas fonctionner sur tous les téléphones via QR code.</p>
-                            </div>
-                        )}
-                        <QRCodeDisplay url={playerUrl} />
-                        <Button onClick={handleCopy} className="w-full">{copySuccess ? 'Copié !' : 'Copier le lien'}</Button>
-                        <Button variant="secondary" onClick={() => setSharingQuiz(null)}>Fermer</Button>
-                    </div>
-                </Card>
-            </div>
-        );
-    };
 
     const renderCreationScreen = () => (
         <Card>
@@ -160,7 +126,8 @@ const AdminDashboard: React.FC = () => {
 
     const renderManualForm = () => (
         <>
-            <div className="space-y-4 pr-2 max-h-96 overflow-y-auto">
+            {/* Les classes max-h-96 et overflow-y-auto ont été retirées pour supprimer la scrollbar */}
+            <div className="space-y-4 pr-2">
                 {editableQuestions.map((q, qIndex) => (
                     <div key={q.id} className="bg-gray-900 p-4 rounded-lg border border-gray-700">
                         <div className="flex justify-between items-center mb-3">
@@ -185,7 +152,9 @@ const AdminDashboard: React.FC = () => {
             {error && <p className="text-red-400 text-center mt-4">{error}</p>}
             <div className="flex gap-4 mt-6">
                 <Button variant="secondary" onClick={handleCancelCreation} className="w-full">Annuler</Button>
-                <Button onClick={handleSaveManualQuiz} className="w-full">Enregistrer le Quiz</Button>
+                <Button onClick={handleSaveManualQuiz} className="w-full" disabled={isSaving}>
+                    {isSaving ? 'Sauvegarde...' : 'Enregistrer le Quiz'}
+                </Button>
             </div>
         </>
     );
@@ -201,9 +170,10 @@ const AdminDashboard: React.FC = () => {
             </div>
             <Card>
                 <h2 className="text-2xl font-bold text-center mb-4 text-white">Mes Quiz</h2>
-                <div className="space-y-3">
-                    {quizzes.length === 0 && <p className="text-gray-400 text-center py-4">Vous n'avez pas encore créé de quiz.</p>}
-                    {quizzes.map(quiz => (
+                <div className="space-y-3 min-h-[100px]">
+                    {isLoading && <p className="text-gray-400 text-center py-4 animate-pulse">Chargement des quiz...</p>}
+                    {!isLoading && quizzes.length === 0 && <p className="text-gray-400 text-center py-4">Vous n'avez pas encore créé de quiz.</p>}
+                    {!isLoading && quizzes.map(quiz => (
                         <div key={quiz.id} className="bg-gray-900 p-3 rounded-lg flex items-center justify-between">
                             <span className="text-white font-semibold">{quiz.title}</span>
                             <div className="flex items-center gap-2">
@@ -220,7 +190,7 @@ const AdminDashboard: React.FC = () => {
 
     return (
         <>
-            {renderShareModal()}
+            {sharingQuiz && <ShareModal quiz={sharingQuiz} onClose={() => setSharingQuiz(null)} />}
             {creationMode ? renderCreationScreen() : renderDashboardHome()}
         </>
     );
