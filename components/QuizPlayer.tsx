@@ -3,7 +3,7 @@ import { type Quiz } from '../types';
 import Card from './ui/Card';
 import Input from './ui/Input';
 import Button from './ui/Button';
-import { savePlayerResult } from '../utils/podiumStorage';
+import { savePlayerResult, isPodiumConfigured } from '../services/podiumService';
 
 const TIME_LIMIT = 15;
 
@@ -15,6 +15,7 @@ const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
     const [isAnswered, setIsAnswered] = useState(false);
     const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (step !== 'playing' || isAnswered) return;
@@ -37,25 +38,34 @@ const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
         }
     };
 
-    const handleAnswerSelect = (optionIndex: number) => {
+    const handleAnswerSelect = async (optionIndex: number) => {
         if (isAnswered) return;
         
         setIsAnswered(true);
         setSelectedAnswer(optionIndex);
         
-        if (optionIndex === quiz.questions[currentQuestionIndex].answerIndex) {
-            setScore(prev => prev + 1);
+        const isCorrect = optionIndex === quiz.questions[currentQuestionIndex].answerIndex;
+        if (isCorrect) {
+            setScore(prevScore => prevScore + 1);
+        }
+
+        const isLastQuestion = currentQuestionIndex >= quiz.questions.length - 1;
+
+        if (isLastQuestion && isPodiumConfigured) {
+            setIsSaving(true);
+            const finalScore = score + (isCorrect ? 1 : 0);
+            await savePlayerResult({ id: Date.now().toString(), name: playerName, score: finalScore });
+            setIsSaving(false);
         }
 
         setTimeout(() => {
-            if (currentQuestionIndex < quiz.questions.length - 1) {
+            if (!isLastQuestion) {
                 setCurrentQuestionIndex(prev => prev + 1);
                 setSelectedAnswer(null);
                 setIsAnswered(false);
                 setTimeLeft(TIME_LIMIT);
             } else {
                 setStep('finished');
-                savePlayerResult(quiz.id, { id: Date.now().toString(), name: playerName, score });
             }
         }, 2000);
     };
@@ -70,6 +80,8 @@ const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
         if (isSelected && !isCorrect) return 'bg-red-600';
         return 'bg-gray-700 opacity-50';
     };
+    
+    // Le bloc d'erreur a été supprimé car la vérification est maintenant faite dans App.tsx.
 
     if (step === 'name') {
         return (
@@ -99,7 +111,11 @@ const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
                     <h2 className="text-3xl font-bold text-yellow-300 mb-4">Quiz terminé !</h2>
                     <p className="text-xl text-white mb-2">Bravo, {playerName} !</p>
                     <p className="text-4xl font-bold text-yellow-300 my-6">{score} / {quiz.questions.length}</p>
-                    <p className="text-gray-300">Les résultats sont envoyés. Attendez que l'organisateur annonce le podium !</p>
+                    {isSaving ? (
+                        <p className="text-gray-300 animate-pulse">Enregistrement de votre score...</p>
+                    ) : (
+                        <p className="text-gray-300">Les résultats sont envoyés. Attendez que l'organisateur annonce le podium !</p>
+                    )}
                 </div>
             </Card>
         );
@@ -110,13 +126,13 @@ const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
 
     return (
         <Card>
-             <div className="p-2 relative">
+            <div className="p-2 relative">
                 <div className="absolute top-0 left-0 h-1 bg-yellow-400 rounded-tl-xl" style={{ width: `${progressPercentage}%` }}></div>
                 <div className="flex justify-between items-center mb-4 text-sm text-gray-400 pt-4">
                     <span>Question {currentQuestionIndex + 1}/{quiz.questions.length}</span>
                     <div className="flex items-center gap-2">
                         <span className="font-mono text-lg text-yellow-300">{timeLeft}s</span>
-                         <span>Score: {score}</span>
+                        <span>Score: {score}</span>
                     </div>
                 </div>
                 <p className="text-xl font-semibold mb-6 text-center text-white min-h-[6rem] flex items-center justify-center">{currentQuestion.question}</p>

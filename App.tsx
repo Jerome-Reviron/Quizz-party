@@ -3,8 +3,10 @@ import AdminDashboard from './components/AdminDashboard';
 import QuizPlayer from './components/QuizPlayer';
 import PodiumManager from './components/PodiumManager';
 import Login from './components/Login';
+import ConfigError from './components/ConfigError';
 import { type Quiz } from './types';
 import { decodeData } from './utils/urlData';
+import { isPodiumConfigured } from './services/podiumService';
 
 const App: React.FC = () => {
     const [route, setRoute] = useState<string>('home');
@@ -58,6 +60,12 @@ const App: React.FC = () => {
     };
 
     const renderContent = () => {
+        // NOUVEAU: Le garde-fou de configuration.
+        // Si les clés API ne sont pas chargées, on affiche un écran d'aide.
+        if (!isPodiumConfigured) {
+            return <ConfigError />;
+        }
+        
         switch (route) {
             case 'play':
                 return quizData ? <QuizPlayer quiz={quizData} /> : <div className="text-center p-8">Chargement du quiz...</div>;

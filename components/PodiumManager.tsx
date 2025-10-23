@@ -3,32 +3,41 @@ import { type PlayerResult, type Quiz } from '../types';
 import Card from './ui/Card';
 import Button from './ui/Button';
 import { TrophyIcon } from './icons/Icons';
-import { getPodiumStorageKey, getPlayerResults } from '../utils/podiumStorage';
+import { getPlayerResults, isPodiumConfigured } from '../services/podiumService';
 
 
 const PodiumManager: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
     const [results, setResults] = useState<PlayerResult[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     
     useEffect(() => {
-        // Load initial results
-        setResults(getPlayerResults(quiz.id));
+        if (!isPodiumConfigured) {
+            setIsLoading(false);
+            return;
+        }
 
-        // Listen for storage changes to update podium in real-time
-        const handleStorageChange = (event: StorageEvent) => {
-            if (event.key === getPodiumStorageKey(quiz.id)) {
-                setResults(getPlayerResults(quiz.id));
-            }
+        const loadResults = async () => {
+            const fetchedResults = await getPlayerResults();
+            setResults(fetchedResults);
+            setIsLoading(false);
         };
+        
+        loadResults();
 
-        window.addEventListener('storage', handleStorageChange);
+        // On rafraîchit les scores toutes les 15 secondes pour le "suspense"
+        const intervalId = setInterval(loadResults, 15000);
 
+        // Nettoyage de l'intervalle quand le composant est démonté
         return () => {
-            window.removeEventListener('storage', handleStorageChange);
+            clearInterval(intervalId);
         };
     }, [quiz.id]);
+    
+    // Le bloc d'erreur a été supprimé car la vérification est maintenant faite dans App.tsx.
 
-
-    const sortedResults = [...results].sort((a, b) => b.score - a.score);
+    // On filtre l'entrée d'initialisation pour ne pas l'afficher
+    const visibleResults = results.filter(result => result.id !== 'init');
+    const sortedResults = [...visibleResults].sort((a, b) => b.score - a.score);
 
     const podiumColors = ['text-yellow-400', 'text-gray-300', 'text-yellow-600'];
 
@@ -40,13 +49,16 @@ const PodiumManager: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
             </div>
             
             <div className="space-y-3 mb-6 min-h-[200px]">
-                {sortedResults.length === 0 && (
+                {isLoading && (
+                    <p className="text-gray-400 text-center py-8 animate-pulse">Chargement des résultats...</p>
+                )}
+                {!isLoading && sortedResults.length === 0 && (
                     <p className="text-gray-400 text-center py-8">En attente des premiers résultats...</p>
                 )}
                 {sortedResults.map((result, index) => (
                     <div key={result.id} className="bg-gray-800 p-3 rounded-lg flex items-center justify-between shadow-md animate-fade-in">
                         <div className="flex items-center gap-4">
-                           <div className="w-8 text-center">
+                        <div className="w-8 text-center">
                             {index < 3 ? (
                                 <TrophyIcon className={`w-8 h-8 ${podiumColors[index]}`} />
                             ) : (
