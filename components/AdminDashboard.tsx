@@ -53,28 +53,30 @@ const AdminDashboard: React.FC = () => {
             setError("Le quiz doit avoir un titre.");
             return;
         }
-        if (editableQuestions.length === 0) {
-            setError("Le quiz doit contenir au moins une question.");
-            return;
-        }
-
-        const isAnyQuestionInvalid = editableQuestions.some(q => 
-            !q.question.trim() || q.options.some(opt => !opt.trim()) || q.answerIndex === null
-        );
-
-        if (isAnyQuestionInvalid) {
-            setError("Chaque question doit avoir un texte, des réponses et une bonne réponse sélectionnée.");
-            return;
-        }
-
-        // À ce stade, nous savons que toutes les questions sont valides.
-        const finalQuestions: Question[] = editableQuestions.map(q => ({
-            question: q.question,
-            options: q.options,
-            // Le "as number" est maintenant sûr car nous avons vérifié les nulls ci-dessus.
-            answerIndex: q.answerIndex as number,
-        }));
         
+        // Transformation et validation en une seule étape pour garantir la sécurité des types.
+        const finalQuestions: Question[] = editableQuestions
+            .map(q => {
+                // Vérifie si la question est entièrement valide.
+                const isComplete = q.question.trim() !== '' && q.options.every(opt => opt.trim() !== '') && q.answerIndex !== null;
+                if (isComplete) {
+                    return {
+                        question: q.question,
+                        options: q.options,
+                        // TypeScript sait maintenant que answerIndex est un `number` ici.
+                        answerIndex: q.answerIndex!,
+                    };
+                }
+                return null; // Marque les questions invalides
+            })
+            // Élimine les questions invalides (null) et informe TypeScript du nouveau type.
+            .filter((q): q is Question => q !== null);
+
+        if (finalQuestions.length !== editableQuestions.length || editableQuestions.length === 0) {
+             setError("Chaque quiz doit avoir au moins une question, et chaque question doit être complète (texte, réponses non vides, et bonne réponse sélectionnée).");
+            return;
+        }
+
         const newQuiz: Quiz = {
             id: Date.now().toString(),
             title: newQuizTitle,
@@ -106,7 +108,7 @@ const AdminDashboard: React.FC = () => {
     
     const addQuestion = () => {
         if (editableQuestions.length === 0) {
-            setEditableQuestions([{ id: Date.now(), question: '', options: ['', ''], answerIndex: null }]);
+             setEditableQuestions([{ id: Date.now(), question: '', options: ['', ''], answerIndex: null }]);
         } else {
             setEditableQuestions(prev => [...prev, { id: Date.now(), question: '', options: ['', ''], answerIndex: null }]);
         }
