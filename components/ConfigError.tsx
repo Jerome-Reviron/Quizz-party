@@ -1,6 +1,5 @@
 import React from 'react';
 import Card from './ui/Card';
-import { API_KEY, BIN_ID } from '../services/storageService';
 
 const ConfigError: React.FC = () => {
     return (
