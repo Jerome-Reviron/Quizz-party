@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { type Quiz } from '../types';
-import { encodeData } from '../utils/urlData';
 import Card from './ui/Card';
 import Button from './ui/Button';
 
@@ -20,18 +19,56 @@ interface ShareModalProps {
 const ShareModal: React.FC<ShareModalProps> = ({ quiz, onClose }) => {
     const [copySuccess, setCopySuccess] = useState(false);
 
-    // Construit l'URL de partage en retirant un éventuel hash existant de l'URL de base.
+    // Construit l'URL de partage en se basant sur l'ID du quiz pour une URL courte et fiable.
     const baseUrl = window.location.href.split('#')[0];
-    const encodedQuizData = encodeData(quiz);
-    const playerUrl = `${baseUrl}#/quiz/${encodedQuizData}`;
+    const playerUrl = `${baseUrl}#/quiz/${quiz.id}`;
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(playerUrl).then(() => {
-            setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000);
-        }).catch(err => {
-            console.error('Erreur lors de la tentative de copie', err);
-        });
+        // Méthode de secours (fallback) pour les anciens navigateurs ou contextes non sécurisés
+        const fallbackCopy = () => {
+            const textArea = document.createElement("textarea");
+            textArea.value = playerUrl;
+            
+            // Style pour rendre le textarea invisible et éviter tout décalage visuel
+            textArea.style.position = "fixed";
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.width = "2em";
+            textArea.style.height = "2em";
+            textArea.style.padding = "0";
+            textArea.style.border = "none";
+            textArea.style.outline = "none";
+            textArea.style.boxShadow = "none";
+            textArea.style.background = "transparent";
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 2000);
+            } catch (err) {
+                console.error('La copie via execCommand a échoué', err);
+            }
+
+            document.body.removeChild(textArea);
+        };
+
+        // On essaie d'abord l'API moderne `navigator.clipboard`
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(playerUrl).then(() => {
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 2000);
+            }).catch(err => {
+                console.error('La copie via l\'API Clipboard a échoué, tentative avec la méthode de secours :', err);
+                fallbackCopy();
+            });
+        } else {
+            // Si l'API n'est pas dispo, on utilise directement la méthode de secours
+            fallbackCopy();
+        }
     };
 
     return (
@@ -40,12 +77,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ quiz, onClose }) => {
                 <div className="text-center space-y-4">
                     <h2 className="text-2xl font-bold text-yellow-300">Partager le Quiz</h2>
                     <p className="text-lg text-white">{quiz.title}</p>
-                    {playerUrl.length > 2000 && (
-                        <div className="bg-red-900/50 border border-red-700 text-red-300 text-sm p-3 rounded-lg">
-                            <p><strong>Attention :</strong> Ce quiz est très volumineux et le lien pourrait ne pas fonctionner sur tous les téléphones via QR code.</p>
-                        </div>
-                    )}
                     <QRCodeDisplay url={playerUrl} />
+                    <p className="text-xs text-gray-400">Vos invités peuvent scanner ce code pour jouer !</p>
                     <Button onClick={handleCopy} className="w-full">{copySuccess ? 'Copié !' : 'Copier le lien'}</Button>
                     <Button variant="secondary" onClick={onClose}>Fermer</Button>
                 </div>

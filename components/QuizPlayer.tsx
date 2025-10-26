@@ -112,14 +112,24 @@ const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
     if (step === 'finished') {
         return (
             <Card>
-                <div className="text-center p-4">
-                    <h2 className="text-3xl font-bold text-yellow-300 mb-4">Quiz terminé !</h2>
-                    <p className="text-xl text-white mb-2">Bravo, {playerName} !</p>
-                    <p className="text-4xl font-bold text-yellow-300 my-6">{score} / {quiz.questions.length}</p>
+                <div className="text-center p-4 space-y-6">
+                    <div>
+                        <h2 className="text-3xl font-bold text-yellow-300 mb-4">Quiz terminé !</h2>
+                        <p className="text-xl text-white mb-2">Bravo, {playerName} !</p>
+                        <p className="text-4xl font-bold text-yellow-300 my-6">{score} / {quiz.questions.length}</p>
+                    </div>
                     {isSaving ? (
                         <p className="text-gray-300 animate-pulse">Enregistrement de votre score...</p>
                     ) : (
-                        <p className="text-gray-300">Les résultats sont envoyés. Attendez que l'organisateur annonce le podium !</p>
+                        <div className="space-y-4">
+                            <p className="text-gray-300">Votre score a été enregistré !</p>
+                            <Button 
+                                onClick={() => window.location.hash = `#/podium/${quiz.id}`}
+                                className="w-full"
+                            >
+                                Voir le podium
+                            </Button>
+                        </div>
                     )}
                 </div>
             </Card>

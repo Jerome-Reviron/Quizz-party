@@ -8,7 +8,7 @@ interface AppData {
 
 // --- Configuration ---
 // Les clés API sont maintenant directement intégrées dans le code pour garantir
-// le fonctionnement et résoudre définitivement les erreurs 401.
+// le fonctionnement et résoudre définitivelement les erreurs 401.
 
 const rawApiKey = "$2a$10$dSKL2LBK8zwH48fEw/Awi.wOtNl8rqH4xXC.EQTR2oh5uHkyW/Iz2";
 const rawBinId = "68f6940f43b1c97be9742a29";
@@ -96,12 +96,42 @@ export const getQuizzes = async (): Promise<Quiz[]> => {
 };
 
 /**
+ * Récupère un quiz spécifique par son ID.
+ */
+export const getQuizById = async (quizId: string): Promise<Quiz | null> => {
+    const data = await getAppData();
+    const quiz = data.quizzes?.find(q => q.id === quizId);
+    return quiz || null;
+};
+
+/**
  * Sauvegarde la liste complète des quiz.
  */
 export const saveQuizzes = async (quizzes: Quiz[]): Promise<void> => {
     const data = await getAppData();
     data.quizzes = quizzes;
     await saveAppData(data);
+};
+
+/**
+ * Supprime un quiz et son podium associé.
+ * Retourne la liste des quiz mise à jour.
+ */
+export const deleteQuizAndPodium = async (quizId: string): Promise<Quiz[]> => {
+    const appData = await getAppData();
+
+    const updatedQuizzes = appData.quizzes.filter(quiz => quiz.id !== quizId);
+
+    if (appData.podiums && appData.podiums[quizId]) {
+        delete appData.podiums[quizId];
+    }
+    
+    await saveAppData({
+        quizzes: updatedQuizzes,
+        podiums: appData.podiums,
+    });
+    
+    return updatedQuizzes;
 };
 
 /**
