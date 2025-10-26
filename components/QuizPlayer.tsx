@@ -4,12 +4,13 @@ import Card from './ui/Card';
 import Input from './ui/Input';
 import Button from './ui/Button';
 import { savePlayerResult, isStorageConfigured } from '../services/storageService';
+import PlayerPodium from './PlayerPodium';
 
 const TIME_LIMIT = 15;
 
 const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
     const [playerName, setPlayerName] = useState('');
-    const [step, setStep] = useState<'name' | 'playing' | 'finished'>('name');
+    const [step, setStep] = useState<'name' | 'playing' | 'finished' | 'podium'>('name');
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [score, setScore] = useState(0);
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -112,28 +113,27 @@ const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
     if (step === 'finished') {
         return (
             <Card>
-                <div className="text-center p-4 space-y-6">
-                    <div>
-                        <h2 className="text-3xl font-bold text-yellow-300 mb-4">Quiz terminé !</h2>
-                        <p className="text-xl text-white mb-2">Bravo, {playerName} !</p>
-                        <p className="text-4xl font-bold text-yellow-300 my-6">{score} / {quiz.questions.length}</p>
-                    </div>
+                <div className="text-center p-4">
+                    <h2 className="text-3xl font-bold text-yellow-300 mb-4">Quiz terminé !</h2>
+                    <p className="text-xl text-white mb-2">Bravo, {playerName} !</p>
+                    <p className="text-4xl font-bold text-yellow-300 my-6">{score} / {quiz.questions.length}</p>
                     {isSaving ? (
                         <p className="text-gray-300 animate-pulse">Enregistrement de votre score...</p>
                     ) : (
-                        <div className="space-y-4">
-                            <p className="text-gray-300">Votre score a été enregistré !</p>
-                            <Button 
-                                onClick={() => window.location.hash = `#/podium/${quiz.id}`}
-                                className="w-full"
-                            >
-                                Voir le podium
+                        <>
+                            <p className="text-gray-300 mb-6">Votre score est enregistré !</p>
+                            <Button onClick={() => setStep('podium')} className="w-full">
+                                Voir le Podium
                             </Button>
-                        </div>
+                        </>
                     )}
                 </div>
             </Card>
         );
+    }
+
+    if (step === 'podium') {
+        return <PlayerPodium quiz={quiz} score={score} />;
     }
     
     const currentQuestion = quiz.questions[currentQuestionIndex];
