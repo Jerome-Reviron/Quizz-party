@@ -1,5 +1,5 @@
 {
   "name": "Quiz Party",
-  "description": "Créez un quiz d'anniversaire personnalisé et humoristique pour vos amis. Générez des questions avec l'IA, partagez un QR code pour que vos invités jouent sur leur téléphone, et établissez un podium des meilleurs scores.",
+  "description": "Créez un quiz personnalisé et humoristique pour vos amis. Générez des questions avec l'IA ou manuellement, partagez un QR code pour que vos invités jouent sur leur téléphone, et établissez un podium des meilleurs scores par quiz.",
   "requestFramePermissions": []
 }
