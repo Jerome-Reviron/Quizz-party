@@ -6,7 +6,7 @@ import Button from './ui/Button';
 import { savePlayerResult, isStorageConfigured } from '../services/storageService';
 import PlayerPodium from './PlayerPodium';
 
-const TIME_LIMIT = 15;
+const TIME_LIMIT = 20;
 
 const QuizPlayer: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
     const [playerName, setPlayerName] = useState('');
